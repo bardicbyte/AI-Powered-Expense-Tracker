@@ -1,0 +1,3 @@
+[submodule "receipt_parser"]
+	path = receipt_parser
+	url = https://github.com/ReceiptManager/receipt-parser-legacy.git

@@ -1,0 +1,15 @@
+FROM python:3.11
+
+RUN pip3 install poetry
+
+WORKDIR /app
+
+COPY pyproject.toml ./
+
+RUN poetry install --no-root
+
+COPY ai_invoice_processor ai_invoice_processor
+
+EXPOSE 5001 
+
+CMD ["poetry", "run", "flask", "--app", "ai_invoice_processor", "run", "--host", "0.0.0.0", "--port", "5001"]
