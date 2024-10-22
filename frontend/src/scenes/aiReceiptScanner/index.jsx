@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { 
   Box, 
@@ -44,10 +44,10 @@ const InvoiceUpload = () => {
     formData.append('file', file);
 
     try {
-      const response = await axios.post('http://localhost:80/api/v1/process-invoice', formData, {
+      const response = await axios.post('http://localhost:8001/process', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      console.log('Received invoice data:', response.data);  // Log the received data
+      console.log('Received invoice data:', response.data);
       setInvoiceData(response.data);
     } catch (err) {
       setError('Error processing invoice: ' + err.message);
@@ -63,50 +63,60 @@ const InvoiceUpload = () => {
     }
 
     try {
-      const response = await axios.post('http://localhost:80/api/v1/expense', {
-        invoice_data: invoiceData
-      });
-      alert(`Successfully logged expenses!`);
+      // Format the data to match the API expectations
+      const formattedData = {
+        line_items: Array.isArray(invoiceData.line_items) 
+          ? invoiceData.line_items 
+          : [invoiceData.line_items],
+        store_name: invoiceData.store_name || 'Unknown Store'
+      };
+
+      // Log the data being sent
+      console.log('Sending data to API:', formattedData);
+
+      const response = await axios.post('http://localhost:8000/api/v1/expense/automatic', formattedData);
+      
+      console.log('API Response:', response.data);
+      alert('Successfully logged expenses!');
       setInvoiceData(null);
       setFile(null);
     } catch (err) {
-      setError('Error logging expenses: ' + err.message);
+      console.error('API Error:', err.response?.data || err.message);
+      setError('Error logging expenses: ' + (err.response?.data?.error || err.message));
     }
   };
 
   const renderInvoiceTable = () => {
     if (!invoiceData) return null;
 
-    let items = [];
-    if (Array.isArray(invoiceData.line_items)) {
-      items = invoiceData.line_items;
-    } else if (typeof invoiceData.line_items === 'object') {
-      items = [invoiceData.line_items];
-    } else {
-      return <Typography color="error">Invalid invoice data structure</Typography>;
-    }
+    let items = Array.isArray(invoiceData.line_items) 
+      ? invoiceData.line_items 
+      : [invoiceData.line_items];
 
     return (
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Item Name</TableCell>
-              <TableCell>Quantity</TableCell>
-              <TableCell>Value</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {items.map((item, index) => (
-              <TableRow key={index}>
-                <TableCell>{item.item_name || 'N/A'}</TableCell>
-                <TableCell>{item.item_quantity || 'N/A'}</TableCell>
-                <TableCell>{item.item_value ? `$${item.item_value}` : 'N/A'}</TableCell>
+      <Box>
+        <Typography variant="h6" mb={1}>Store: {invoiceData.store_name || 'Unknown Store'}</Typography>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Item Name</TableCell>
+                <TableCell>Quantity</TableCell>
+                <TableCell>Value</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {items.map((item, index) => (
+                <TableRow key={index}>
+                  <TableCell>{item.item_name || 'N/A'}</TableCell>
+                  <TableCell>{item.item_quantity || '1'}</TableCell>
+                  <TableCell>{item.item_value ? `$${item.item_value}` : 'N/A'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
     );
   };
 
@@ -139,7 +149,7 @@ const InvoiceUpload = () => {
         </Button>
 
         {error && (
-          <Typography color="error">{error}</Typography>
+          <Typography color="error" sx={{ mt: 2 }}>{error}</Typography>
         )}
 
         {invoiceData && (

@@ -1,20 +1,32 @@
-# Use an official Node runtime as the base image
-FROM node:16-alpine
+# Build stage
+FROM node:16-alpine as build
 
-# Set the working directory in the container
+# Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
+# Copy package files
 COPY package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy the rest of the frontend code
+# Copy all files
 COPY . .
 
-# Expose port 3000
-EXPOSE 3000
+# Build the app
+RUN npm run build
 
-# Start the React application
-CMD ["npm", "run", "start"]
+# Production stage
+FROM nginx:alpine
+
+# Copy built files from build stage
+COPY --from=build /app/build /usr/share/nginx/html
+
+# Copy nginx configuration if you have custom config
+# COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port 80
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

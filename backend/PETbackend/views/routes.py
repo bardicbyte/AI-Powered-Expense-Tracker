@@ -1,124 +1,164 @@
 from flask import Blueprint, jsonify, request
 from datetime import datetime
 from PETbackend.models import db
-# from PETbackend.models.users import User
-# from PETbackend.models.bill_reminders import BillReminder
-# from PETbackend.models.financial_goals import FinancialGoal
-# from PETbackend.models.budgets import Budget
 from PETbackend.models.expenses import Expense
 import uuid
-import requests
+from decimal import Decimal, InvalidOperation
 
 api = Blueprint("api", __name__, url_prefix="/api/v1")
 
-# Health check
 @api.route('/health', methods=['GET'])
 def health_check():
-    return jsonify({"message": "Server is healthy"}), 200
+    return jsonify({"status": "healthy"}), 200
 
-# Create budget
-@api.route('/budget', methods=['POST'])
-def create_budget():
-    data = request.json
-    new_budget = Budget(
-        BudgetID=str(uuid.uuid4()),
-        UserID=str(uuid.uuid4()),  # Generate a random UUID
-        Name=data['name'],
-        StartDate=datetime.strptime(data['start_date'], '%Y-%m-%d').date(),
-        EndDate=datetime.strptime(data['end_date'], '%Y-%m-%d').date(),
-        TotalAmount=data['total_amount']
-    )
-    db.session.add(new_budget)
-    db.session.commit()
-    return jsonify({"message": "Budget created successfully", "budget_id": new_budget.BudgetID}), 201
-
-@api.route('/check-invoice-processor', methods=['GET'])
-def check_invoice_processor():
+@api.route('/expense/manual', methods=['POST'])
+def log_manual_expense():
     try:
-        response = requests.get('http://invoice_processor:5001/health', timeout=5)
-        if response.status_code == 200:
-            return jsonify({"status": "Invoice processor is reachable", "details": response.json()}), 200
-        else:
-            return jsonify({"status": "Invoice processor is reachable but returned an unexpected status", "code": response.status_code}), 500
-    except requests.exceptions.RequestException as e:
-        return jsonify({"status": "Invoice processor is not reachable", "error": str(e)}), 503
+        # Get JSON data and handle case where request has no JSON
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
 
-# Updated route for processing invoices
-@api.route('/process-invoice', methods=['POST'])
-def process_invoice():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-    
-    if file:
+        # Validate required fields (removed date from required fields)
+        required_fields = ['expense_name', 'expense_type', 'amount']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return jsonify({
+                "error": "Missing required fields",
+                "missing_fields": missing_fields
+            }), 400
+
+        # Validate data types and formats
         try:
-            # Send the file to the invoice processing service
-            invoice_processor_url = "http://invoice_processor:5001/process"  # Update this URL if needed
-            files = {'file': (file.filename, file.stream, file.content_type)}
-            response = requests.post(invoice_processor_url, files=files)
-            
-            if response.status_code == 200:
-                return jsonify(response.json()), 200
-            else:
-                return jsonify({"error": "Failed to process invoice"}), 500
-        except requests.RequestException as e:
-            return jsonify({"error": f"Error connecting to invoice processor: {str(e)}"}), 500
+            amount = Decimal(str(data['amount']))
+        except InvalidOperation as e:
+            return jsonify({
+                "error": "Invalid amount format",
+                "details": str(e)
+            }), 400
 
-    return jsonify({"error": "Failed to process file"}), 500
+        # Create new expense with today's date
+        new_expense = Expense(
+            ExpenseID=str(uuid.uuid4()),
+            ExpenseName=str(data['expense_name']),
+            ExpenseType=str(data['expense_type']),
+            Amount=amount,
+            Date=datetime.utcnow().date()  # Always use today's date
+        )
 
-
-@api.route('/expense', methods=['POST'])
-def log_expense():
-    data = request.json
-    
-    if 'invoice_data' in data:
-        # Process invoice data
-        invoice_data = data['invoice_data']
-        expenses = []
-
-        # Extract header information
-        invoice_date = invoice_data.get('header', {}).get('invoice_date', datetime.now().strftime('%Y-%m-%d'))
-        seller = invoice_data.get('header', {}).get('seller', 'Unknown')
-
-        # Process each item as a separate expense
-        for item in invoice_data.get('items', []):
-            new_expense = Expense(
-                ExpenseID=str(uuid.uuid4()),
-                ExpenseName=f"{seller} - {item.get('item_name', 'Unknown Item')}",
-                ExpenseType='Invoice Item',
-                Amount=float(item.get('item_gross_worth', 0)),
-                Date=datetime.strptime(invoice_date, '%Y-%m-%d').date(),
-               
-            )
-            expenses.append(new_expense)
-
-        # Add all expenses to the session and commit
-        db.session.add_all(expenses)
+        # Add to database and commit
+        db.session.add(new_expense)
         db.session.commit()
 
         return jsonify({
-            "message": f"Successfully logged {len(expenses)} expenses from invoice",
-            "expense_ids": [expense.ExpenseID for expense in expenses]
+            "message": "Expense logged successfully",
+            "expense_id": new_expense.ExpenseID,
+            "expense": new_expense.to_dict()
         }), 201
 
-    else:
-        # Handle manually entered expense (unchanged)
-        new_expense = Expense(
-            ExpenseID=str(uuid.uuid4()), 
-            ExpenseName=data['expense_name'],
-            ExpenseType=data['expense_type'],
-            Amount=data['amount'],
-            Date=datetime.strptime(data['date'], '%Y-%m-%d').date(),
-            
-        )
-        db.session.add(new_expense)
+    except Exception as e:
+        # Rollback the session in case of error
+        db.session.rollback()
+        return jsonify({
+            "error": "Internal server error",
+            "details": str(e)
+        }), 500
+
+@api.route('/expense/automatic', methods=['POST'])
+def log_automatic_expense():
+    try:
+        data = request.get_json()
+        if not data or 'line_items' not in data:
+            return jsonify({"error": "No line items provided"}), 400
+
+        expenses = []
+        current_date = datetime.utcnow().date()
+        
+        # Get store name for the expense description
+        store_name = data.get('store_name', 'Unknown Store').strip() or 'Unknown Store'
+        
+        # Process each line item
+        for item in data['line_items']:
+            try:
+                # Clean and validate the item value
+                item_value = item.get('item_value', '0')
+                if isinstance(item_value, str):
+                    item_value = item_value.replace('$', '').strip()
+                
+                amount = Decimal(str(item_value))
+                quantity = int(item.get('item_quantity', 1))
+                
+                # Clean up item name - convert to title case for better readability
+                item_name = item.get('item_name', 'Unknown Item').strip()
+                item_name = ' '.join(item_name.split()).title()
+                
+                # If quantity is more than 1, add it to the expense name
+                expense_name = f"{item_name} x{quantity}" if quantity > 1 else item_name
+                
+                new_expense = Expense(
+                    ExpenseID=str(uuid.uuid4()),
+                    ExpenseName=expense_name,
+                    ExpenseType='Grocery',  # You can modify this based on your needs
+                    Amount=amount * quantity,  # Multiply by quantity
+                    Date=current_date
+                )
+                expenses.append(new_expense)
+                
+            except (ValueError, InvalidOperation) as e:
+                return jsonify({
+                    "error": f"Invalid amount format for item {item.get('item_name', 'Unknown Item')}",
+                    "details": str(e)
+                }), 400
+
+        if not expenses:
+            return jsonify({"error": "No valid expenses found in the data"}), 400
+
+        # Add all expenses to database
+        db.session.add_all(expenses)
         db.session.commit()
-        return jsonify({"message": "Expense logged successfully", "expense_id": new_expense.ExpenseID}), 201
+
+        # Calculate total for verification
+        total_amount = sum(float(expense.Amount) for expense in expenses)
+
+        return jsonify({
+            "message": f"Successfully logged {len(expenses)} expenses from receipt",
+            "expense_ids": [expense.ExpenseID for expense in expenses],
+            "expenses": [expense.to_dict() for expense in expenses],
+            "total_amount": round(total_amount, 2)
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": "Internal server error",
+            "details": str(e)
+        }), 500
 
 @api.route('/expenses', methods=['GET'])
 def get_expenses():
-    expenses = Expense.query.all()
-    return jsonify([expense.to_dict() for expense in expenses]), 200
+    try:
+        expenses = Expense.query.all()
+        return jsonify([expense.to_dict() for expense in expenses]), 200
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to retrieve expenses",
+            "details": str(e)
+        }), 500
+    
+@api.route('/expenses', methods=['DELETE'])
+def delete_all_expenses():
+    try:
+        # Delete all records from the Expense table
+        num_deleted = db.session.query(Expense).delete()
+        db.session.commit()
+        
+        return jsonify({
+            "message": f"Successfully deleted {num_deleted} expenses",
+            "count": num_deleted
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": "Failed to delete expenses",
+            "details": str(e)
+        }), 500

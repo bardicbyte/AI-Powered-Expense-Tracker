@@ -4,13 +4,9 @@ import { Box, IconButton, Typography, useTheme } from "@mui/material";
 import { Link } from "react-router-dom";
 import "react-pro-sidebar/dist/css/styles.css";
 import { tokens } from "../../theme";
-import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
-import StorefrontIcon from "@mui/icons-material/Storefront";
-import HandshakeIcon from '@mui/icons-material/Handshake';
-import WalletIcon from '@mui/icons-material/Wallet';
-import EnergySavingsLeafIcon from '@mui/icons-material/EnergySavingsLeaf';
-import SettingsIcon from '@mui/icons-material/Settings';
-import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import DocumentScannerIcon from "@mui/icons-material/DocumentScanner";
+import DescriptionIcon from "@mui/icons-material/Description";
 import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
 
 const Item = ({ title, to, icon, selected, setSelected }) => {
@@ -35,7 +31,7 @@ const Sidebar = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [selected, setSelected] = useState("Dashboard");
+  const [selected, setSelected] = useState("Log Expense");
 
   return (
     <Box
@@ -63,7 +59,7 @@ const Sidebar = () => {
           color: "#6870fa !important",
         },
         "& .pro-menu": {
-          height: "calc(100% - 100px)", // Adjust this value based on your header height
+          height: "calc(100% - 100px)",
           overflowY: "auto",
         },
       }}
@@ -87,7 +83,7 @@ const Sidebar = () => {
                 ml="15px"
               >
                 <Typography variant="h3" color={colors.grey[100]}>
-                  P2P Energy
+                  AI Invoice App
                 </Typography>
                 <IconButton onClick={() => setIsCollapsed(!isCollapsed)}>
                   <MenuOutlinedIcon />
@@ -96,6 +92,7 @@ const Sidebar = () => {
             )}
           </MenuItem>
 
+          {/* PROFILE SECTION */}
           {!isCollapsed && (
             <Box mb="25px">
               <Box display="flex" justifyContent="center" alignItems="center">
@@ -109,20 +106,24 @@ const Sidebar = () => {
               </Box>
               <Box textAlign="center">
                 <Typography
-                  variant="h2"
+                  variant="h5"
                   color={colors.grey[100]}
-                  fontWeight="bold"
                   sx={{ m: "10px 0 0 0" }}
                 >
-                  Alvee Mir
+                  Made by
                 </Typography>
-                <Typography variant="h5" color={colors.greenAccent[500]}>
-                  Prosumer
+                <Typography
+                  variant="h4"
+                  color={colors.greenAccent[500]}
+                  fontWeight="bold"
+                >
+                  Alvee Mir
                 </Typography>
               </Box>
             </Box>
           )}
 
+          {/* MENU ITEMS */}
           <Box
             paddingLeft={isCollapsed ? undefined : "10%"}
             sx={{
@@ -141,51 +142,23 @@ const Sidebar = () => {
             }}
           >
             <Item
-              title="Dashboard"
+              title="Log Expense"
               to="/"
-              icon={<HomeOutlinedIcon />} 
+              icon={<ReceiptLongIcon />}
               selected={selected}
               setSelected={setSelected}
             />
             <Item
-              title="Marketplace"
-              to="/team"
-              icon={<StorefrontIcon />}
+              title="AI Receipt Scanner"
+              to="/aiReceiptScanner"
+              icon={<DocumentScannerIcon />}
               selected={selected}
               setSelected={setSelected}
             />
             <Item
-              title="My Trades"
-              to="/contacts"
-              icon={<HandshakeIcon />}
-              selected={selected}
-              setSelected={setSelected}
-            />
-            <Item
-              title="Wallet"
+              title="Invoice"
               to="/invoices"
-              icon={<WalletIcon />}
-              selected={selected}
-              setSelected={setSelected}
-            />
-            <Item
-              title="Energy Consumption"
-              to="/form"
-              icon={<EnergySavingsLeafIcon />}
-              selected={selected}
-              setSelected={setSelected}
-            />
-            <Item
-              title="Settings"
-              to="/form"
-              icon={<SettingsIcon />}
-              selected={selected}
-              setSelected={setSelected}
-            />
-            <Item
-              title="Help & Support"
-              to="/faq"
-              icon={<HelpOutlineOutlinedIcon />}
+              icon={<DescriptionIcon />}
               selected={selected}
               setSelected={setSelected}
             />

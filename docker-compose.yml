@@ -2,36 +2,49 @@ version: '3.8'
 
 services:
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: alvee25/pet-frontend:latest
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
     ports:
-      - "3000:3000"
-    environment:
-      - REACT_APP_API_URL=http://localhost/api
+      - "3000:80"
     networks:
-      - app-network
+      - pet-network
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.api
+    image: alvee25/pet-backend:latest
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
     ports:
-      - "80:80"
+      - "8000:8000"
+    networks:
+      - pet-network
     environment:
-      - INVOICE_PROCESSOR_URL=http://invoice_processor:5001
-    networks:
-      - app-network
+      - AI_PROCESSOR_URL=http://ai-processor:8001
 
-  invoice_processor:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.invoice
+  ai-processor:
+    image: alvee25/pet-ai-processor:latest
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
     ports:
-      - "5001:5001"
+      - "8001:8001"
     networks:
-      - app-network
+      - pet-network
 
 networks:
-  app-network:
-    driver: bridge
+  pet-network:
+    driver: overlay
