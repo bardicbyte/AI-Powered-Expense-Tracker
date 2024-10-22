@@ -17,6 +17,9 @@ import { tokens } from "../../theme";
 import Header from "../../components/Header";
 import { useTheme } from '@mui/material/styles';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const AI_PROCESSOR_URL = process.env.REACT_APP_AI_PROCESSOR_URL || 'http://localhost:8001';
+
 const InvoiceUpload = () => {
   const [file, setFile] = useState(null);
   const [processing, setProcessing] = useState(false);
@@ -44,7 +47,7 @@ const InvoiceUpload = () => {
     formData.append('file', file);
 
     try {
-      const response = await axios.post('http://localhost:8001/process', formData, {
+      const response = await axios.post(`${AI_PROCESSOR_URL}/process`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       console.log('Received invoice data:', response.data);
@@ -74,7 +77,7 @@ const InvoiceUpload = () => {
       // Log the data being sent
       console.log('Sending data to API:', formattedData);
 
-      const response = await axios.post('http://localhost:8000/api/v1/expense/automatic', formattedData);
+      const response = await axios.post(`${API_URL}/api/v1/expense/automatic`, formattedData);
       
       console.log('API Response:', response.data);
       alert('Successfully logged expenses!');

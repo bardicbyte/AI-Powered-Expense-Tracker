@@ -9,6 +9,10 @@ import 'jspdf-autotable';
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
 
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
+
 const Invoices = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
@@ -62,7 +66,7 @@ const Invoices = () => {
   const fetchExpenses = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:8000/api/v1/expenses");
+      const response = await axios.get(`${API_URL}/api/v1/expenses`);
       const expensesWithId = response.data.map(expense => ({
         ...expense,
         id: expense.ExpenseID
@@ -77,7 +81,7 @@ const Invoices = () => {
 
   const handleDeleteAll = async () => {
     try {
-      await axios.delete("http://localhost:8000/api/v1/expenses");
+      await axios.delete(`${API_URL}/api/v1/expenses`);
       setExpenses([]);
     } catch (error) {
       console.error("Error deleting expenses:", error);
