@@ -19,6 +19,8 @@ import { tokens } from "../../theme";
 import Header from "../../components/Header";
 import axios from "axios";
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
 const Expenses = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
@@ -40,7 +42,7 @@ const Expenses = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
-      const response = await axios.post("http://localhost:8000/api/v1/expense/manual", expense);
+      const response = await axios.post(`${API_URL}/api/v1/expense/manual`, expense);
       console.log("Expense logged:", response.data);
       setExpense({
         expense_name: "",
@@ -56,7 +58,7 @@ const Expenses = () => {
 
   const fetchExpenses = async () => {
     try {
-      const response = await axios.get("http://localhost:8000/api/v1/expenses");
+      const response = await axios.get(`${API_URL}/api/v1/expenses`);
       setExpenses(response.data);
     } catch (error) {
       console.error("Error fetching expenses:", error);
