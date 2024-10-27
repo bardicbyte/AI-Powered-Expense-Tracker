@@ -40,7 +40,7 @@ const Expenses = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
-      const response = await axios.post("http://localhost:80/api/v1/expense", expense);
+      const response = await axios.post("http://localhost:8080/api/v1/expense", expense);
       console.log("Expense logged:", response.data);
       setExpense({
         expense_name: "",
@@ -56,7 +56,7 @@ const Expenses = () => {
 
   const fetchExpenses = async () => {
     try {
-      const response = await axios.get("http://localhost:80/api/v1/expenses");
+      const response = await axios.get("http://localhost:8080/api/v1/expenses");
       setExpenses(response.data);
     } catch (error) {
       console.error("Error fetching expenses:", error);

@@ -44,7 +44,7 @@ const InvoiceUpload = () => {
     formData.append('file', file);
 
     try {
-      const response = await axios.post('http://localhost:80/api/v1/process-invoice', formData, {
+      const response = await axios.post('http://localhost:8080/api/v1/process-invoice', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       console.log('Received invoice data:', response.data);  // Log the received data
@@ -63,7 +63,7 @@ const InvoiceUpload = () => {
     }
 
     try {
-      const response = await axios.post('http://localhost:80/api/v1/expense', {
+      const response = await axios.post('http://localhost:8080/api/v1/expense', {
         invoice_data: invoiceData
       });
       alert(`Successfully logged expenses!`);
@@ -78,10 +78,14 @@ const InvoiceUpload = () => {
     if (!invoiceData) return null;
 
     let items = [];
-    if (Array.isArray(invoiceData.line_items)) {
-      items = invoiceData.line_items;
-    } else if (typeof invoiceData.line_items === 'object') {
-      items = [invoiceData.line_items];
+    if (Array.isArray(invoiceData.items)) {
+      items = invoiceData.items;
+    } else if (typeof invoiceData.items === 'object') {
+      items = [invoiceData.items];
+    } else if (Array.isArray(invoiceData)) {
+      items = invoiceData;
+    } else if (typeof invoiceData === 'object') {
+      items = [invoiceData];
     } else {
       return <Typography color="error">Invalid invoice data structure</Typography>;
     }
@@ -99,9 +103,9 @@ const InvoiceUpload = () => {
           <TableBody>
             {items.map((item, index) => (
               <TableRow key={index}>
-                <TableCell>{item.item_name || 'N/A'}</TableCell>
-                <TableCell>{item.item_quantity || 'N/A'}</TableCell>
-                <TableCell>{item.item_value ? `$${item.item_value}` : 'N/A'}</TableCell>
+                <TableCell>{item.item_name || item.name || 'N/A'}</TableCell>
+                <TableCell>{item.item_quantity || item.quantity || 'N/A'}</TableCell>
+                <TableCell>{item.item_value || item.value ? `$${item.item_value || item.value}` : 'N/A'}</TableCell>
               </TableRow>
             ))}
           </TableBody>

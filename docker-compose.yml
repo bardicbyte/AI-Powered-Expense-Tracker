@@ -17,7 +17,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.api
     ports:
-      - "80:80"
+      - "8080:80"
     environment:
       - INVOICE_PROCESSOR_URL=http://invoice_processor:5001
     networks:
